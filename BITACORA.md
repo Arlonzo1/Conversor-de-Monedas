@@ -16,7 +16,7 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 | Implementación, fases I-0 a I-5 de la hoja de ruta | ✅ Completo |
 | Extensiones opcionales: API REST, caché y segundo proveedor | ✅ Completo |
 | Pruebas | ✅ 175 aprobadas sin internet, más 4 contra las APIs reales |
-| CI en Windows, Linux y macOS | ⏳ 5 de 6 jobs aprobados; falta confirmar macOS con Python 3.11 |
+| CI en Windows, Linux y macOS | ✅ Los 6 jobs aprobados (3 sistemas × Python 3.11 y 3.13) |
 
 ---
 
@@ -24,10 +24,7 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 
 ### Por hacer
 
-- [ ] **Confirmar el job de CI de macOS con Python 3.11.** Al cierre de la sesión seguía en cola en GitHub Actions.
-  - Revisar el run en https://github.com/Arlonzo1/Conversor-de-Monedas/actions/runs/39630392452
-  - Si pasa, actualizar la fila RNF-07 de [avance-implementacion.md](avance-implementacion.md) a "aprobado en los 3 sistemas" y la fila de CI del estado general de esta bitácora.
-  - Si falla, abrir el log del job, corregir y volver a subir.
+- [x] ~~Confirmar el job de CI de macOS con Python 3.11.~~ Aprobado; RNF-07 queda cerrado.
 - [ ] **Decidir qué hacer con la propuesta técnica.** Las secciones 15 a 17 todavía describen la implementación como "futura" y los criterios de éxito no están marcados. Hay dos opciones:
   - (a) dejarla intacta como documento de planificación original, y que el informe de avance muestre el resultado;
   - (b) actualizarla para marcar los criterios cumplidos.
@@ -75,6 +72,7 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 **Commit de cierre de sesión**
 - Informe de avance actualizado con las extensiones y el resultado del CI.
 - Se crea esta bitácora.
+- CI final: los 6 jobs aprobados, con lo que se cierra RNF-07 (portabilidad).
 
 ---
 

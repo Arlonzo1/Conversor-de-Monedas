@@ -62,7 +62,7 @@ $ python main.py 100 USD COP
 | RNF-04 Rendimiento < 3 s | Caché de tasas | Medido entre 0,65 s y 1,5 s sin caché, y 0,012 s con caché |
 | RNF-05 Confiabilidad | Errores del dominio, manejados en la consola y en la API REST, más el proveedor de respaldo | `test_api_failure_does_not_crash_the_program`, `test_provider_down_is_503_and_nothing_is_saved`, `test_fallback_exchange_rate_provider.py` |
 | RNF-06 Precisión decimal | `Decimal` en todo el flujo, incluso al leer el JSON de la API | `test_parse_keeps_exact_decimal_values`, `test_reads_the_rate_without_losing_precision` |
-| RNF-07 Portabilidad | Solo librería estándar; salida en UTF-8 | GitHub Actions: aprobado en Windows y Linux con Python 3.11 y 3.13, y en macOS con 3.13. Al cierre de este corte, **macOS con 3.11 seguía en cola**. |
+| RNF-07 Portabilidad | Solo librería estándar; salida en UTF-8 | GitHub Actions: **aprobado en Windows, Linux y macOS con Python 3.11 y 3.13** (6 de 6 jobs). |
 | RNF-08 Seguridad | Solo HTTPS; la clave se lee de `EXCHANGE_RATE_API_KEY` | `test_only_https_is_allowed` |
 | RNF-09 Usabilidad | Mensajes en español, comando `ayuda` | `test_cli_controller.py` |
 | RNF-10 Persistencia | `JsonFileConversionRepository` con escritura atómica | `test_history_survives_between_instances`, `test_json_history_persists_between_runs` |
