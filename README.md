@@ -10,6 +10,7 @@ Es un caso de estudio de **arquitectura hexagonal (puertos y adaptadores)**: una
 |---|---|
 | [propuesta-tecnica-arquitectura-hexagonal.md](propuesta-tecnica-arquitectura-hexagonal.md) | Análisis y planificación: arquitectura, requerimientos, diseño, riesgos y hoja de ruta |
 | [avance-implementacion.md](avance-implementacion.md) | Estado de la implementación por fase y trazabilidad de requerimientos |
+| [BITACORA.md](BITACORA.md) | Registro de lo realizado y lista de pendientes |
 | [conversor-monedas/](conversor-monedas/) | Código fuente y pruebas (ver su [README](conversor-monedas/README.md)) |
 
 ## Inicio rápido
