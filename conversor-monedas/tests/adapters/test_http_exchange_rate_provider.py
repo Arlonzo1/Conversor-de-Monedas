@@ -1,8 +1,8 @@
 """Pruebas del adaptador HTTP sin red: se inyecta una función `fetch` falsa."""
-import json
 import socket
 from datetime import datetime, timezone
 from decimal import Decimal
+from functools import partial
 from urllib.error import URLError
 
 import pytest
@@ -10,6 +10,7 @@ import pytest
 from adapters.outbound.http_exchange_rate_provider import HttpExchangeRateProvider
 from core.domain.currency_code import CurrencyCode
 from core.domain.errors import ExchangeRateUnavailable, UnsupportedCurrency
+from tests.adapters.fake_fetch import FakeFetch as BaseFetch
 
 USD, COP = CurrencyCode("USD"), CurrencyCode("COP")
 
@@ -18,19 +19,7 @@ SUCCESS_BODY = (
     b'{"result":"success","base_code":"USD","time_last_update_unix":1792540952,'
     b'"rates":{"USD":1,"COP":3153.773599,"EUR":0.89075}}'
 )
-
-
-class FakeFetch:
-    def __init__(self, status=200, body=SUCCESS_BODY, error=None):
-        self.status, self.body, self.error = status, body, error
-        self.urls = []
-
-    def __call__(self, url, timeout):
-        self.urls.append(url)
-        if self.error:
-            raise self.error
-        body = self.body if isinstance(self.body, bytes) else json.dumps(self.body).encode()
-        return self.status, body
+FakeFetch = partial(BaseFetch, body=SUCCESS_BODY)
 
 
 def test_reads_the_rate_without_losing_precision():

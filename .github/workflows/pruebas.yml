@@ -1,0 +1,31 @@
+# Ejecuta las pruebas en Windows, Linux y macOS (RNF-07) con la versión mínima
+# soportada de Python y una reciente. No usa internet: el núcleo se prueba con
+# adaptadores falsos (riesgo R8).
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.13"]
+    defaults:
+      run:
+        working-directory: conversor-monedas
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -v
+      - name: Prueba de humo de la aplicación
+        run: python main.py --sin-conexion --memoria 100 USD COP

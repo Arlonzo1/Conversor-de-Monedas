@@ -10,15 +10,13 @@ Todo fallo técnico se traduce a un error del dominio (RF-07, RNF-05).
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from http.client import HTTPException
 from typing import Any
-from urllib.error import HTTPError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
 
+from adapters.outbound.http_fetch import DEFAULT_TIMEOUT_SECONDS, Fetch, urllib_fetch
 from core.application.ports.outbound.exchange_rate_provider import ExchangeRateProvider
 from core.domain.currency_code import CurrencyCode
 from core.domain.errors import ExchangeRateUnavailable, InvalidExchangeRate, UnsupportedCurrency
@@ -26,20 +24,6 @@ from core.domain.exchange_rate import ExchangeRate
 
 OPEN_BASE_URL = "https://open.er-api.com/v6"
 KEYED_BASE_URL = "https://v6.exchangerate-api.com/v6"
-DEFAULT_TIMEOUT_SECONDS = 5.0
-
-# (url, timeout) -> (código HTTP, cuerpo). Se inyecta para probar el adaptador sin red.
-Fetch = Callable[[str, float], tuple[int, bytes]]
-
-
-def urllib_fetch(url: str, timeout: float) -> tuple[int, bytes]:
-    """GET real con la librería estándar. Los fallos de red se propagan como OSError."""
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "conversor-monedas/0.1"})
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            return response.status, response.read()
-    except HTTPError as error:
-        return error.code, error.read()
 
 
 class HttpExchangeRateProvider(ExchangeRateProvider):
