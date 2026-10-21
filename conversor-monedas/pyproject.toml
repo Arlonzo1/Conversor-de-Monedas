@@ -1,0 +1,15 @@
+[project]
+name = "conversor-monedas"
+version = "0.1.0"
+description = "Conversor de monedas con historial, construido con arquitectura hexagonal (puertos y adaptadores)."
+requires-python = ">=3.11"
+dependencies = []  # el núcleo y los adaptadores solo usan la librería estándar
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+markers = ["red: pruebas que llaman a la API real (requieren internet)"]
