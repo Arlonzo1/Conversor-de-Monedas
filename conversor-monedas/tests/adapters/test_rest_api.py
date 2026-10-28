@@ -4,7 +4,7 @@ import pytest
 from adapters.inbound.rest_api import RestApi
 from adapters.outbound.fake_exchange_rate_provider import FakeExchangeRateProvider
 from core.application.services.convert_currency_service import ConvertCurrencyService
-from tests.adapters.wsgi_client import call
+from tests.adapters.wsgi_client import call, call_raw
 
 
 @pytest.fixture
@@ -94,3 +94,26 @@ def test_unknown_route_and_wrong_method(api):
 def test_rejects_oversized_bodies(api):
     huge = {"monto": "1", "origen": "USD", "destino": "COP", "relleno": "x" * 20_000}
     assert call(api, "POST", "/conversiones", huge)[0] == 413
+
+
+def test_home_serves_the_web_page(api):
+    status, headers, payload = call_raw(api, "GET", "/")
+
+    assert status == 200
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert headers["Content-Length"] == str(len(payload))
+    page = payload.decode("utf-8")
+    assert "<form" in page
+    assert "/conversiones" in page  # la página solo habla con la API, no calcula nada
+
+
+def test_web_page_does_not_load_external_resources(api):
+    """La página debe funcionar sin internet, igual que el resto de la aplicación."""
+    page = call_raw(api, "GET", "/")[2].decode("utf-8")
+    assert "http://" not in page and "https://" not in page
+
+
+def test_home_only_accepts_get(api):
+    status, _, headers = call(api, "POST", "/")
+    assert status == 405
+    assert headers["Allow"] == "GET"

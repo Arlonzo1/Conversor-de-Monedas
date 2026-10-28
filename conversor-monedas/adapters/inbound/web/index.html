@@ -1,0 +1,316 @@
+<!doctype html>
+<!--
+  Frontend del conversor. Es un cliente más de la API REST (POST y GET /conversiones):
+  no calcula nada por su cuenta, así que las reglas siguen viviendo solo en el núcleo.
+  HTML, CSS y JavaScript sin librerías ni recursos externos, para que funcione sin internet.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conversor de monedas</title>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --card: #ffffff;
+      --text: #1c2433;
+      --muted: #5f6b7d;
+      --border: #d9dee7;
+      --accent: #1f6feb;
+      --accent-text: #ffffff;
+      --error-bg: #fdecec;
+      --error-text: #a01d1d;
+      --result-bg: #eef4ff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11151c;
+        --card: #1a202b;
+        --text: #e6eaf0;
+        --muted: #9aa5b5;
+        --border: #2e3746;
+        --accent: #4c8dff;
+        --accent-text: #0b1220;
+        --error-bg: #3a1c1f;
+        --error-text: #ffb3b3;
+        --result-bg: #1e2a40;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { font-size: 1.6rem; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); margin: 0 0 24px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 0;
+    }
+    input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .amount input { font-size: 1.4rem; }
+    .currencies {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: end;
+      margin: 16px 0 20px;
+    }
+    button { font: inherit; cursor: pointer; border-radius: 8px; }
+    .swap {
+      height: 44px;
+      width: 44px;
+      font-size: 1.2rem;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+    .swap:hover { border-color: var(--accent); }
+    .convert {
+      width: 100%;
+      padding: 12px;
+      font-weight: 600;
+      color: var(--accent-text);
+      background: var(--accent);
+      border: none;
+    }
+    .convert:disabled { opacity: 0.6; cursor: wait; }
+    .result { margin-top: 20px; padding: 16px; border-radius: 8px; background: var(--result-bg); }
+    .result .from { color: var(--muted); margin: 0; }
+    .result .to { font-size: 1.9rem; font-weight: 700; margin: 2px 0 8px; overflow-wrap: anywhere; }
+    .result .rate { color: var(--muted); font-size: 0.9rem; margin: 0; }
+    .error {
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: var(--error-bg);
+      color: var(--error-text);
+    }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .history-header h2 { font-size: 1.1rem; margin: 0; }
+    .link {
+      padding: 4px 8px;
+      color: var(--accent);
+      background: transparent;
+      border: none;
+    }
+    ul.history { list-style: none; margin: 0; padding: 0; }
+    ul.history li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+    ul.history .amounts { font-weight: 600; overflow-wrap: anywhere; }
+    ul.history .date { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+    .empty { color: var(--muted); margin: 8px 0 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 480px) {
+      .currencies { grid-template-columns: minmax(0, 1fr); }
+      .swap { justify-self: center; transform: rotate(90deg); }
+      ul.history li { flex-direction: column; gap: 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Conversor de monedas</h1>
+  <p class="subtitle">Tasas reales de cambio, actualizadas una vez al día.</p>
+
+  <section class="card">
+    <form id="form" novalidate>
+      <div class="amount">
+        <label for="amount">Monto</label>
+        <input id="amount" type="number" inputmode="decimal" min="0" step="any" value="100" autofocus>
+      </div>
+      <div class="currencies">
+        <div>
+          <label for="source">De</label>
+          <select id="source"></select>
+        </div>
+        <button type="button" class="swap" id="swap" title="Intercambiar monedas" aria-label="Intercambiar monedas">⇄</button>
+        <div>
+          <label for="target">A</label>
+          <select id="target"></select>
+        </div>
+      </div>
+      <button type="submit" class="convert" id="convert">Convertir</button>
+    </form>
+
+    <div class="result" id="result" aria-live="polite" hidden>
+      <p class="from" id="result-from"></p>
+      <p class="to" id="result-to"></p>
+      <p class="rate" id="result-rate"></p>
+    </div>
+    <div class="error" id="error" role="alert" hidden></div>
+  </section>
+
+  <section class="card">
+    <div class="history-header">
+      <h2>Historial</h2>
+      <button type="button" class="link" id="refresh">Actualizar</button>
+    </div>
+    <ul class="history" id="history"></ul>
+    <p class="empty" id="empty" hidden>Todavía no hay conversiones.</p>
+  </section>
+</main>
+
+<script>
+  const CURRENCIES = [
+    ["USD", "Dólar estadounidense"],
+    ["COP", "Peso colombiano"],
+    ["EUR", "Euro"],
+    ["MXN", "Peso mexicano"],
+    ["BRL", "Real brasileño"],
+    ["ARS", "Peso argentino"],
+    ["CLP", "Peso chileno"],
+    ["PEN", "Sol peruano"],
+    ["GBP", "Libra esterlina"],
+    ["CAD", "Dólar canadiense"],
+    ["CHF", "Franco suizo"],
+    ["JPY", "Yen japonés"],
+    ["CNY", "Yuan chino"],
+  ];
+  const HISTORY_LIMIT = 10;
+
+  const $ = (id) => document.getElementById(id);
+  const form = $("form"), amount = $("amount"), source = $("source"), target = $("target");
+
+  for (const select of [source, target]) {
+    for (const [code, name] of CURRENCIES) {
+      select.add(new Option(`${code} · ${name}`, code));
+    }
+  }
+  source.value = "USD";
+  target.value = "COP";
+
+  // Los montos llegan como texto (p. ej. "315377.36") para no perder precisión;
+  // se formatean como texto, sin pasar por números de punto flotante.
+  function formatNumber(text) {
+    if (/e/i.test(text)) {
+      return Number(text).toLocaleString("es-CO", { maximumSignificantDigits: 6 });
+    }
+    const [integer, fraction] = text.split(".");
+    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return fraction ? `${grouped},${fraction}` : grouped;
+  }
+
+  function formatMoney(money) {
+    return `${formatNumber(money.monto)} ${money.moneda}`;
+  }
+
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function showError(message) {
+    $("result").hidden = true;
+    $("error").textContent = message;
+    $("error").hidden = false;
+  }
+
+  function showResult(conversion) {
+    $("error").hidden = true;
+    $("result-from").textContent = `${formatMoney(conversion.original)} =`;
+    $("result-to").textContent = formatMoney(conversion.convertido);
+    $("result-rate").textContent =
+      `1 ${conversion.original.moneda} = ${formatNumber(conversion.tasa.valor)} ${conversion.convertido.moneda}` +
+      ` · Tasa actualizada el ${formatDate(conversion.tasa.actualizada)}`;
+    $("result").hidden = false;
+  }
+
+  async function request(method, path, body) {
+    let response;
+    try {
+      response = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      throw new Error("No se pudo contactar el servidor. ¿Sigue ejecutándose python main.py --servidor?");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `El servidor respondió con el código ${response.status}.`);
+    }
+    return data;
+  }
+
+  async function loadHistory() {
+    const list = $("history");
+    try {
+      const { conversiones } = await request("GET", `/conversiones?limite=${HISTORY_LIMIT}`);
+      list.replaceChildren(...conversiones.map((c) => {
+        const item = document.createElement("li");
+        const amounts = document.createElement("span");
+        amounts.className = "amounts";
+        amounts.textContent = `${formatMoney(c.original)} → ${formatMoney(c.convertido)}`;
+        const date = document.createElement("span");
+        date.className = "date";
+        date.textContent = formatDate(c.fecha);
+        item.append(amounts, date);
+        return item;
+      }));
+      $("empty").textContent = "Todavía no hay conversiones.";
+      $("empty").hidden = conversiones.length > 0;
+    } catch (error) {
+      list.replaceChildren();
+      $("empty").textContent = error.message;
+      $("empty").hidden = false;
+    }
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (amount.value.trim() === "") {
+      showError("Escriba un monto, por ejemplo 100 o 12.50.");
+      amount.focus();
+      return;
+    }
+    const button = $("convert");
+    button.disabled = true;
+    button.textContent = "Convirtiendo…";
+    try {
+      const conversion = await request("POST", "/conversiones", {
+        monto: amount.value,
+        origen: source.value,
+        destino: target.value,
+      });
+      showResult(conversion);
+      loadHistory();
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Convertir";
+    }
+  });
+
+  $("swap").addEventListener("click", () => {
+    [source.value, target.value] = [target.value, source.value];
+  });
+  $("refresh").addEventListener("click", loadHistory);
+
+  loadHistory();
+</script>
+</body>
+</html>

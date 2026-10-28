@@ -1,6 +1,6 @@
 # Conversor de Monedas con Historial
 
-Aplicación que convierte montos entre monedas con tasas reales y guarda un historial. Se usa por **consola** o como **API REST**.
+Aplicación que convierte montos entre monedas con tasas reales y guarda un historial. Se usa por **consola**, desde una **página web** o como **API REST**.
 Está construida con **arquitectura hexagonal (puertos y adaptadores)** como caso de estudio.
 El análisis y el diseño completos están en [`../propuesta-tecnica-arquitectura-hexagonal.md`](../propuesta-tecnica-arquitectura-hexagonal.md).
 
@@ -17,7 +17,7 @@ python main.py 100 USD COP        # una conversión
 python main.py 100 usd a cop      # también se acepta así
 python main.py historial          # todo el historial (lo más reciente primero)
 python main.py historial 5        # las últimas 5 conversiones
-python main.py --servidor         # API REST en http://127.0.0.1:8000 (--host, --puerto)
+python main.py --servidor         # página web y API REST en http://127.0.0.1:8000 (--host, --puerto)
 python main.py --sin-conexion 100 USD COP   # tasas de prueba, sin internet (no son reales)
 python main.py --memoria ...      # historial solo durante esta ejecución
 ```
@@ -28,10 +28,17 @@ $ python main.py 100 USD COP
   Tasa: 1 USD = 3153.773599 COP (actualizada 2026-10-20 19:02)
 ```
 
+### Página web
+
+Con `python main.py --servidor`, abra http://127.0.0.1:8000 en el navegador. Ahí escribe el monto, elige las monedas (el botón ⇄ las intercambia) y presiona **Convertir**. Debajo aparece el historial, que es el mismo de la consola.
+
+La página está en [`adapters/inbound/web/index.html`](adapters/inbound/web/index.html). Es HTML, CSS y JavaScript sin librerías ni recursos externos, y se adapta a celular y a modo oscuro. **No calcula nada:** solo llama a `POST /conversiones` y `GET /conversiones`, así que las reglas siguen viviendo en el núcleo.
+
 ### API REST
 
 | Método y ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|
+| `GET /` | — | `200` la página web |
 | `GET /salud` | — | `200 {"estado": "ok"}` |
 | `POST /conversiones` | `{"monto": "100", "origen": "USD", "destino": "COP"}` | `201` con la conversión |
 | `GET /conversiones` | `?limite=5` (opcional) | `200 {"conversiones": [...]}`, la más reciente primero |
@@ -70,6 +77,7 @@ La consola y la API REST usan **los mismos puertos de entrada y el mismo histori
 
 ```mermaid
 flowchart LR
+    WEB[Página web<br/>navegador] --> REST
     CLI[CliController]
     REST[RestApi]
     subgraph CORE[Núcleo: core/]
@@ -106,7 +114,7 @@ core/                       el hexágono: solo importa core/ y librería estánd
     ├── ports/outbound/     ExchangeRateProvider, ConversionRepository
     └── services/           implementación de los casos de uso
 adapters/
-├── inbound/                CliController, RestApi
+├── inbound/                CliController, RestApi y la página web (web/index.html)
 └── outbound/               ExchangeRate-API, currency-api, caché, respaldo, Fake, InMemory, JsonFile
 main.py                     composition root: único lugar que elige los adaptadores
 tests/                      core/ con adaptadores falsos · adapters/ · arquitectura · main
@@ -126,7 +134,7 @@ tests/                      core/ con adaptadores falsos · adapters/ · arquite
 ## Pruebas
 
 ```bash
-python -m pytest                                   # 175 pruebas, sin internet
+python -m pytest                                   # 178 pruebas, sin internet
 CONVERSOR_PRUEBAS_RED=1 python -m pytest -m red    # 4 pruebas contra las APIs reales
 ```
 

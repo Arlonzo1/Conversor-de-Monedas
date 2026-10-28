@@ -5,6 +5,13 @@ from wsgiref.util import setup_testing_defaults
 
 
 def call(app, method, path, body=None, query=""):
+    status, headers, payload = call_raw(app, method, path, body, query)
+    assert headers["Content-Type"] == "application/json; charset=utf-8"
+    return status, json.loads(payload), headers
+
+
+def call_raw(app, method, path, body=None, query=""):
+    """Como call, pero devuelve el cuerpo en bytes sin exigir JSON (p. ej. la página web)."""
     raw = body if isinstance(body, bytes) else (b"" if body is None else json.dumps(body).encode())
     environ = {
         "REQUEST_METHOD": method,
@@ -20,5 +27,4 @@ def call(app, method, path, body=None, query=""):
         captured["status"], captured["headers"] = int(status.split()[0]), dict(headers)
 
     payload = b"".join(app(environ, start_response))
-    assert captured["headers"]["Content-Type"] == "application/json; charset=utf-8"
-    return captured["status"], json.loads(payload), captured["headers"]
+    return captured["status"], captured["headers"], payload

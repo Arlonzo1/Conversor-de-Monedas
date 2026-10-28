@@ -8,14 +8,15 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 
 ---
 
-## Estado general (21 de octubre de 2026)
+## Estado general (27 de octubre de 2026)
 
 | Bloque | Estado |
 |---|---|
 | Análisis y planificación (propuesta técnica, fases 1 a 6) | ✅ Completo |
 | Implementación, fases I-0 a I-5 de la hoja de ruta | ✅ Completo |
 | Extensiones opcionales: API REST, caché y segundo proveedor | ✅ Completo |
-| Pruebas | ✅ 175 aprobadas sin internet, más 4 contra las APIs reales |
+| Frontend web, servido por la API REST en `GET /` | ✅ Completo |
+| Pruebas | ✅ 178 aprobadas sin internet, más 4 contra las APIs reales |
 | CI en Windows, Linux y macOS | ✅ Los 6 jobs aprobados (3 sistemas × Python 3.11 y 3.13) |
 
 ---
@@ -37,7 +38,7 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 - [ ] **Servidor de producción para la API REST.** `wsgiref` sirve para la demostración pero no para producción. Se podría usar `waitress`, o migrar el adaptador a FastAPI, sin tocar el núcleo.
 - [ ] **Preparar la demostración para la sustentación.** Propuesta de guion:
   1. Convertir por consola.
-  2. Convertir por la API REST con `curl`.
+  2. Convertir desde la página web (`python main.py --servidor` y abrir http://127.0.0.1:8000).
   3. Mostrar que las dos comparten el historial.
   4. Usar `--sin-conexion` para mostrar el intercambio de adaptadores.
   5. Agregar un `import urllib` al dominio para que la prueba de arquitectura falle en vivo.
@@ -45,6 +46,20 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 ---
 
 ## Registro de sesiones
+
+### 27 de octubre de 2026
+
+**Frontend web**
+- Nueva página en `adapters/inbound/web/index.html`, servida por `RestApi` en `GET /`:
+  - formulario con monto, moneda de origen y de destino, y un botón para intercambiarlas;
+  - resultado con la tasa y su fecha de actualización;
+  - errores del dominio mostrados en español;
+  - historial con las últimas 10 conversiones.
+- No calcula nada: solo llama a `POST /conversiones` y `GET /conversiones`. Los montos se formatean como texto, sin pasar por `float` (RNF-06).
+- Sin librerías ni recursos externos. Se adapta a celular y a modo oscuro.
+- **No se modificó ningún archivo de `core/`.**
+- 3 pruebas nuevas: la página se sirve como HTML, no carga recursos externos y `/` solo acepta GET.
+- Se verificó con el servidor real y capturas de pantalla en Edge (escritorio, celular, modo oscuro y error).
 
 ### 21 de octubre de 2026
 
@@ -81,7 +96,7 @@ Registro de lo realizado y de lo que falta por hacer. Se actualiza al final de c
 ```bash
 cd conversor-monedas
 python -m pip install -r requirements-dev.txt   # solo instala pytest
-python -m pytest                                # debe dar 175 aprobadas, 4 omitidas
+python -m pytest                                # debe dar 178 aprobadas, 4 omitidas
 python main.py 100 USD COP                      # prueba rápida con las APIs reales
 ```
 

@@ -4,6 +4,7 @@ Usa exactamente los mismos puertos de entrada que la consola, así que agregarla
 cambió nada del núcleo. Es una aplicación WSGI de la librería estándar: se prueba
 llamándola directamente y se sirve con wsgiref.
 
+    GET  /                           -> 200 página web (frontend) que usa las rutas de abajo
     GET  /salud                      -> 200 {"estado": "ok"}
     POST /conversiones               {"monto": "100", "origen": "USD", "destino": "COP"} -> 201
     GET  /conversiones?limite=5      -> 200 {"conversiones": [...]} (más reciente primero)
@@ -14,8 +15,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from decimal import Decimal
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
@@ -32,6 +35,7 @@ from core.domain.errors import (
 from core.domain.money import Money
 
 MAX_BODY_BYTES = 10_000
+WEB_PAGE = Path(__file__).resolve().parent / "web" / "index.html"
 
 StartResponse = Callable[[str, list[tuple[str, str]]], Any]
 
@@ -45,11 +49,21 @@ class HttpError(Exception):
         self.headers = headers or []
 
 
+@dataclass(frozen=True)
+class RawResponse:
+    """Respuesta que no es JSON, como la página web."""
+
+    content: bytes
+    content_type: str
+
+
 class RestApi:
     def __init__(self, convert_currency: ConvertCurrency, get_history: GetConversionHistory) -> None:
         self._convert_currency = convert_currency
         self._get_history = get_history
+        self._web_page = WEB_PAGE.read_bytes()
         self._routes: dict[str, dict[str, Callable[[dict[str, Any]], tuple[HTTPStatus, Any]]]] = {
+            "/": {"GET": self._home},
             "/salud": {"GET": self._health},
             "/conversiones": {"GET": self._list_conversions, "POST": self._create_conversion},
         }
@@ -62,11 +76,15 @@ class RestApi:
             status, body, headers = error.status, {"error": str(error)}, error.headers
         except DomainError as error:
             status, body = _status_for(error), {"error": str(error), "tipo": type(error).__name__}
-        payload = json.dumps(body, ensure_ascii=False, indent=2).encode("utf-8")
+        if isinstance(body, RawResponse):
+            payload, content_type = body.content, body.content_type
+        else:
+            payload = json.dumps(body, ensure_ascii=False, indent=2).encode("utf-8")
+            content_type = "application/json; charset=utf-8"
         start_response(
             f"{status.value} {status.phrase}",
             [
-                ("Content-Type", "application/json; charset=utf-8"),
+                ("Content-Type", content_type),
                 ("Content-Length", str(len(payload))),
                 *headers,
             ],
@@ -85,6 +103,9 @@ class RestApi:
                 HTTPStatus.METHOD_NOT_ALLOWED, f"Método no permitido. Use: {allowed}.", [("Allow", allowed)]
             )
         return handler(environ)
+
+    def _home(self, environ: dict[str, Any]) -> tuple[HTTPStatus, Any]:
+        return HTTPStatus.OK, RawResponse(self._web_page, "text/html; charset=utf-8")
 
     def _health(self, environ: dict[str, Any]) -> tuple[HTTPStatus, Any]:
         return HTTPStatus.OK, {"estado": "ok"}
@@ -116,7 +137,7 @@ class RestApi:
 def serve(app: RestApi, host: str = "127.0.0.1", port: int = 8000) -> None:
     """Sirve la API hasta Ctrl+C. Por defecto solo escucha en el propio equipo."""
     with make_server(host, port, app) as server:
-        print(f"API REST en http://{host}:{port}  (Ctrl+C para detener)")
+        print(f"Abra http://{host}:{port} en el navegador  (API REST en la misma dirección; Ctrl+C para detener)")
         try:
             server.serve_forever()
         except KeyboardInterrupt:
